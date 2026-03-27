@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Toastmasters Speech Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root {
+    --bg: #0e0e0e;
+    --surface: #161616;
+    --card: #1c1c1c;
+    --border: #2a2a2a;
+    --accent: #c8973a;
+    --accent2: #8b2131;
+    --text: #f0ece4;
+    --muted: #888;
+    --success: #4caf88;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    font-size: 15px;
+  }
+
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 22px 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .logo-icon {
+    width: 40px; height: 40px;
+    background: var(--accent2);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Playfair Display', serif;
+    font-size: 20px; font-weight: 900; color: #fff;
+  }
+
+  .logo-text h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 18px; font-weight: 700;
+    color: var(--text);
+  }
+
+  .logo-text p { font-size: 12px; color: var(--muted); margin-top: 1px; }
+
+  .api-bar {
+    display: flex; align-items: center; gap: 10px;
+  }
+
+  .api-bar label { font-size: 12px; color: var(--muted); }
+
+  .api-bar input {
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-family: monospace;
+    font-size: 13px;
+    width: 260px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .api-bar input:focus { border-color: var(--accent); }
+
+  main { max-width: 1200px; margin: 0 auto; padding: 40px; }
+
+  .upload-section {
+    background: var(--card);
+    border: 2px dashed var(--border);
+    border-radius: 16px;
+    padding: 48px;
+    text-align: center;
+    transition: all 0.3s;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .upload-section::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse at 50% 0%, rgba(200,151,58,0.05), transparent 70%);
+    pointer-events: none;
+  }
+
+  .upload-section:hover, .upload-section.drag-over {
+    border-color: var(--accent);
+    background: #1f1a12;
+  }
+
+  .upload-icon {
+    width: 64px; height: 64px;
+    background: rgba(200,151,58,0.12);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 20px;
+    font-size: 28px;
+  }
+
+  .upload-section h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 22px; margin-bottom: 8px;
+  }
+
+  .upload-section p { color: var(--muted); font-size: 14px; }
+
+  .upload-section input[type="file"] {
+    position: absolute; inset: 0;
+    opacity: 0; cursor: pointer; width: 100%; height: 100%;
+  }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 10px 22px;
+    border-radius: 10px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px; font-weight: 500;
+    cursor: pointer; border: none;
+    transition: all 0.2s;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: #000;
+  }
+  .btn-primary:hover { background: #daa84a; transform: translateY(-1px); }
+  .btn-primary:disabled { background: #555; color: #888; cursor: not-allowed; transform: none; }
+
+  .btn-outline {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text);
+  }
+  .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+
+  .btn-success {
+    background: var(--success);
+    color: #000;
+  }
+  .btn-success:hover { background: #5bc49a; }
+
+  .queue-section { margin-top: 28px; }
+
+  .queue-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 14px;
+  }
+
+  .queue-header h3 {
+    font-family: 'Playfair Display', serif;
+    font-size: 17px;
+  }
+
+  .queue-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 12px;
+  }
+
+  .agenda-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .agenda-card img {
+    width: 100%; height: 110px;
+    object-fit: cover; display: block;
+  }
+
+  .agenda-card-info {
+    padding: 10px 12px;
+  }
+
+  .agenda-card-info .filename {
+    font-size: 12px; color: var(--text);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  .agenda-card-info .status {
+    font-size: 11px; margin-top: 4px;
+    display: flex; align-items: center; gap: 5px;
+  }
+
+  .status-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+  }
+  .status-dot.pending { background: var(--muted); }
+  .status-dot.processing { background: var(--accent); animation: pulse 1s infinite; }
+  .status-dot.done { background: var(--success); }
+  .status-dot.error { background: #e55; }
+
+  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
+
+  .agenda-card .remove-btn {
+    position: absolute; top: 6px; right: 6px;
+    background: rgba(0,0,0,0.7); border: none; color: #fff;
+    width: 22px; height: 22px; border-radius: 50%;
+    font-size: 14px; cursor: pointer; line-height: 22px; text-align: center;
+  }
+
+  .process-bar {
+    margin-top: 20px;
+    display: flex; align-items: center; gap: 14px;
+  }
+
+  .progress-wrap {
+    flex: 1;
+    background: var(--border);
+    border-radius: 99px; height: 6px; overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%; background: var(--accent);
+    border-radius: 99px;
+    transition: width 0.4s ease;
+    width: 0%;
+  }
+
+  .progress-label { font-size: 13px; color: var(--muted); min-width: 80px; }
+
+  /* Results table */
+  .results-section { margin-top: 40px; }
+
+  .results-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 18px;
+  }
+
+  .results-header h2 {
+    font-family: 'Playfair Display', serif; font-size: 22px;
+  }
+
+  .badge {
+    background: rgba(200,151,58,0.15);
+    color: var(--accent);
+    border: 1px solid rgba(200,151,58,0.3);
+    padding: 3px 12px; border-radius: 99px;
+    font-size: 12px;
+  }
+
+  .table-wrap {
+    overflow-x: auto;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+  }
+
+  table {
+    width: 100%; border-collapse: collapse;
+    font-size: 13.5px;
+  }
+
+  thead tr {
+    background: var(--surface);
+  }
+
+  th {
+    padding: 12px 16px;
+    text-align: left;
+    font-weight: 500;
+    color: var(--muted);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+    border-bottom: 1px solid var(--border);
+  }
+
+  td {
+    padding: 11px 16px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+
+  tr:last-child td { border-bottom: none; }
+
+  tbody tr:hover { background: rgba(255,255,255,0.02); }
+
+  .speaker-name {
+    font-weight: 500; color: var(--text);
+  }
+
+  .speech-pill {
+    display: inline-flex; align-items: center;
+    background: rgba(200,151,58,0.1);
+    border: 1px solid rgba(200,151,58,0.25);
+    color: var(--accent);
+    padding: 2px 8px; border-radius: 6px;
+    font-size: 11.5px; font-weight: 500;
+    margin: 2px; white-space: nowrap;
+  }
+
+  .speech-pill .date {
+    color: var(--muted); margin-left: 5px; font-size: 10.5px;
+  }
+
+  .empty-state {
+    text-align: center; padding: 60px 20px;
+    color: var(--muted);
+  }
+
+  .empty-state .icon { font-size: 40px; margin-bottom: 14px; }
+  .empty-state p { font-size: 14px; }
+
+  .toast {
+    position: fixed; bottom: 24px; right: 24px;
+    background: var(--card); border: 1px solid var(--border);
+    border-left: 4px solid var(--success);
+    padding: 14px 20px; border-radius: 10px;
+    font-size: 14px; color: var(--text);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    transform: translateY(100px); opacity: 0;
+    transition: all 0.3s; z-index: 999;
+  }
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast.error { border-left-color: #e55; }
+
+  .search-bar {
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 9px 16px;
+    border-radius: 9px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px; outline: none;
+    width: 220px;
+    transition: border-color 0.2s;
+  }
+  .search-bar:focus { border-color: var(--accent); }
+  .search-bar::placeholder { color: var(--muted); }
+
+  .divider {
+    height: 1px; background: var(--border);
+    margin: 32px 0;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">T</div>
+    <div class="logo-text">
+      <h1>Speech Tracker</h1>
+      <p>Toastmasters Progress Dashboard</p>
+    </div>
+  </div>
+  <div class="api-bar">
+    <label>Groq API Key</label>
+    <input type="password" id="groqKey" placeholder="gsk_..." />
+  </div>
+</header>
+
+<main>
+  <!-- Upload -->
+  <div class="upload-section" id="dropzone">
+    <input type="file" id="fileInput" accept="image/*" multiple />
+    <div class="upload-icon">📋</div>
+    <h2>Drop Agenda Images Here</h2>
+    <p>Upload one or multiple JPG/PNG agenda images — we'll extract all speakers automatically</p>
+  </div>
+
+  <!-- Queue -->
+  <div class="queue-section" id="queueSection" style="display:none">
+    <div class="queue-header">
+      <h3>Agenda Queue</h3>
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-outline" onclick="clearQueue()">Clear All</button>
+        <button class="btn btn-primary" id="processBtn" onclick="processAll()">⚡ Extract Speeches</button>
+      </div>
+    </div>
+    <div class="queue-grid" id="queueGrid"></div>
+    <div class="process-bar" id="processBar" style="display:none">
+      <div class="progress-wrap"><div class="progress-fill" id="progressFill"></div></div>
+      <span class="progress-label" id="progressLabel">0 / 0</span>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Results -->
+  <div class="results-section">
+    <div class="results-header">
+      <div style="display:flex;align-items:center;gap:14px">
+        <h2>Speaker Progress</h2>
+        <span class="badge" id="speakerCount">0 speakers</span>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center">
+        <input class="search-bar" type="text" placeholder="Search speaker..." id="searchInput" oninput="renderTable()" />
+        <button class="btn btn-outline" onclick="clearData()">Clear Data</button>
+        <button class="btn btn-success" onclick="exportExcel()">⬇ Export Excel</button>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <div id="tableContainer">
+        <div class="empty-state">
+          <div class="icon">🎤</div>
+          <p>No speeches tracked yet. Upload agenda images to get started.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────
+let queue = []; // {file, name, status, date}
+let speakerData = {}; // {name: [{level, project, date, meetingDate}]}
+
+// Load persisted data
+try {
+  const saved = localStorage.getItem('tm_speaker_data');
+  if (saved) speakerData = JSON.parse(saved);
+} catch(e) {}
+
+// ── File input / drag ──────────────────────────────────────────────────────
+document.getElementById('fileInput').addEventListener('change', e => {
+  addFiles(Array.from(e.target.files));
+  e.target.value = '';
+});
+
+const dropzone = document.getElementById('dropzone');
+dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag-over'); });
+dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag-over'));
+dropzone.addEventListener('drop', e => {
+  e.preventDefault(); dropzone.classList.remove('drag-over');
+  addFiles(Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/')));
+});
+
+function addFiles(files) {
+  files.forEach(file => {
+    const url = URL.createObjectURL(file);
+    // Try to extract date from filename like "Meeting_45_24th_Aug_2025"
+    const dateMatch = file.name.match(/(\d{1,2})[a-z]*[_\s]+([A-Za-z]+)[_\s]+(\d{4})/i);
+    let meetingDate = 'Unknown';
+    if (dateMatch) {
+      meetingDate = `${dateMatch[1]} ${dateMatch[2]} ${dateMatch[3]}`;
+    }
+    queue.push({ file, url, name: file.name, status: 'pending', meetingDate });
+  });
+  renderQueue();
+}
+
+// ── Queue rendering ────────────────────────────────────────────────────────
+function renderQueue() {
+  const section = document.getElementById('queueSection');
+  section.style.display = queue.length ? 'block' : 'none';
+  const grid = document.getElementById('queueGrid');
+  grid.innerHTML = queue.map((item, i) => `
+    <div class="agenda-card" id="card_${i}">
+      <img src="${item.url}" alt="${item.name}" />
+      <button class="remove-btn" onclick="removeFromQueue(${i})">×</button>
+      <div class="agenda-card-info">
+        <div class="filename">${item.name}</div>
+        <div class="status">
+          <div class="status-dot ${item.status}"></div>
+          <span style="color:var(--muted)">${
+            item.status === 'pending' ? 'Ready' :
+            item.status === 'processing' ? 'Extracting...' :
+            item.status === 'done' ? 'Done' : 'Error'
+          }</span>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function removeFromQueue(i) {
+  queue.splice(i, 1);
+  renderQueue();
+}
+
+function clearQueue() {
+  queue = [];
+  renderQueue();
+}
+
+// ── Process all agendas ────────────────────────────────────────────────────
+async function processAll() {
+  const key = document.getElementById('groqKey').value.trim();
+  if (!key) { showToast('Please enter your Groq API key first', true); return; }
+
+  const pending = queue.filter(q => q.status === 'pending');
+  if (!pending.length) { showToast('No pending agendas to process', true); return; }
+
+  document.getElementById('processBar').style.display = 'flex';
+  document.getElementById('processBtn').disabled = true;
+
+  let done = 0;
+  for (let i = 0; i < queue.length; i++) {
+    if (queue[i].status !== 'pending') continue;
+    queue[i].status = 'processing';
+    renderQueue();
+    updateProgress(done, pending.length);
+
+    try {
+      const speeches = await extractSpeeches(queue[i].file, queue[i].meetingDate, key);
+      speeches.forEach(s => {
+        if (!speakerData[s.name]) speakerData[s.name] = [];
+        // Avoid duplicates
+        const exists = speakerData[s.name].some(x =>
+          x.level === s.level && x.project === s.project && x.meetingDate === s.meetingDate
+        );
+        if (!exists) speakerData[s.name].push(s);
+      });
+      queue[i].status = 'done';
+      persistData();
+    } catch(err) {
+      queue[i].status = 'error';
+      console.error(err);
+    }
+
+    done++;
+    renderQueue();
+    updateProgress(done, pending.length);
+    renderTable();
+  }
+
+  document.getElementById('processBtn').disabled = false;
+  showToast(`✅ Processed ${done} agenda${done > 1 ? 's' : ''}! Tracker updated.`);
+}
+
+function updateProgress(done, total) {
+  const pct = total ? (done / total * 100) : 0;
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressLabel').textContent = `${done} / ${total}`;
+}
+
+// ── Groq API call ──────────────────────────────────────────────────────────
+async function extractSpeeches(file, meetingDate, apiKey) {
+  const base64 = await fileToBase64(file);
+  const mimeType = file.type || 'image/jpeg';
+
+  const prompt = `This is a Toastmasters meeting agenda image. 
+Your task: Extract ONLY the speakers from the "PREPARED SPEECH SECTION" (sometimes called "Prepared Speech Section").
+
+For each speaker in that section, extract:
+1. Speaker's full name
+2. Level number (e.g., Level 1, Level 2, Level 3, Level 4, Level 5)
+3. Project number (e.g., Project 1, Project 2, Project 3)
+
+Return ONLY a JSON array, no explanation, no markdown:
+[
+  {"name": "Full Name", "level": 1, "project": 2},
+  ...
+]
+
+If no prepared speech section is found, return: []`;
+
+  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      model: 'meta-llama/llama-4-scout-17b-16e-instruct',
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64}` } },
+          { type: 'text', text: prompt }
+        ]
+      }],
+      max_tokens: 500,
+      temperature: 0
+    })
+  });
+
+  if (!response.ok) {
+    const err = await response.json();
+    throw new Error(err.error?.message || 'Groq API error');
+  }
+
+  const data = await response.json();
+  const text = data.choices[0].message.content.trim();
+
+  // Strip markdown if any
+  const clean = text.replace(/```json|```/g, '').trim();
+  const parsed = JSON.parse(clean);
+
+  return parsed.map(s => ({
+    name: s.name,
+    level: s.level,
+    project: s.project,
+    meetingDate: meetingDate,
+    label: `L${s.level}P${s.project}`
+  }));
+}
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result.split(',')[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+// ── Table rendering ────────────────────────────────────────────────────────
+function renderTable() {
+  const search = document.getElementById('searchInput').value.toLowerCase();
+  const speakers = Object.keys(speakerData).filter(n => n.toLowerCase().includes(search));
+
+  document.getElementById('speakerCount').textContent =
+    `${Object.keys(speakerData).length} speaker${Object.keys(speakerData).length !== 1 ? 's' : ''}`;
+
+  if (!speakers.length) {
+    document.getElementById('tableContainer').innerHTML = `
+      <div class="empty-state">
+        <div class="icon">🎤</div>
+        <p>${search ? 'No speakers match your search.' : 'No speeches tracked yet. Upload agenda images to get started.'}</p>
+      </div>`;
+    return;
+  }
+
+  // Get max speeches across all speakers
+  const maxSpeeches = Math.max(...Object.values(speakerData).map(a => a.length));
+
+  let html = `<table><thead><tr>
+    <th>#</th>
+    <th>Speaker Name</th>
+    <th>Total Speeches</th>`;
+  for (let i = 1; i <= maxSpeeches; i++) {
+    html += `<th>Speech ${i}</th>`;
+  }
+  html += `</tr></thead><tbody>`;
+
+  speakers.sort().forEach((name, idx) => {
+    const speeches = speakerData[name].sort((a, b) => {
+      // Sort by level then project
+      if (a.level !== b.level) return a.level - b.level;
+      return a.project - b.project;
+    });
+
+    html += `<tr>
+      <td style="color:var(--muted)">${idx + 1}</td>
+      <td><span class="speaker-name">${name}</span></td>
+      <td><span style="color:var(--accent);font-weight:600">${speeches.length}</span></td>`;
+
+    for (let i = 0; i < maxSpeeches; i++) {
+      if (speeches[i]) {
+        html += `<td><span class="speech-pill">L${speeches[i].level} P${speeches[i].project}<span class="date">${speeches[i].meetingDate}</span></span></td>`;
+      } else {
+        html += `<td style="color:var(--border)">—</td>`;
+      }
+    }
+    html += `</tr>`;
+  });
+
+  html += `</tbody></table>`;
+  document.getElementById('tableContainer').innerHTML = html;
+}
+
+// ── Export Excel ───────────────────────────────────────────────────────────
+function exportExcel() {
+  const speakers = Object.keys(speakerData);
+  if (!speakers.length) { showToast('No data to export', true); return; }
+
+  const maxSpeeches = Math.max(...Object.values(speakerData).map(a => a.length));
+
+  const headers = ['Speaker Name', 'Total Speeches'];
+  for (let i = 1; i <= maxSpeeches; i++) {
+    headers.push(`Speech ${i} - Level/Project`);
+    headers.push(`Speech ${i} - Date`);
+  }
+
+  const rows = speakers.sort().map(name => {
+    const speeches = speakerData[name].sort((a, b) => {
+      if (a.level !== b.level) return a.level - b.level;
+      return a.project - b.project;
+    });
+
+    const row = [name, speeches.length];
+    for (let i = 0; i < maxSpeeches; i++) {
+      if (speeches[i]) {
+        row.push(`L${speeches[i].level} P${speeches[i].project}`);
+        row.push(speeches[i].meetingDate);
+      } else {
+        row.push(''); row.push('');
+      }
+    }
+    return row;
+  });
+
+  const wsData = [headers, ...rows];
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+  // Column widths
+  ws['!cols'] = [
+    { wch: 24 }, { wch: 16 },
+    ...Array(maxSpeeches * 2).fill(null).map((_, i) => ({ wch: i % 2 === 0 ? 18 : 16 }))
+  ];
+
+  XLSX.utils.book_append_sheet(wb, ws, 'Speech Tracker');
+  XLSX.writeFile(wb, 'toastmasters_speech_tracker.xlsx');
+  showToast('✅ Excel file exported!');
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+function persistData() {
+  try { localStorage.setItem('tm_speaker_data', JSON.stringify(speakerData)); } catch(e) {}
+}
+
+function clearData() {
+  if (!confirm('Clear all tracked speaker data?')) return;
+  speakerData = {};
+  persistData();
+  renderTable();
+  showToast('Data cleared');
+}
+
+function showToast(msg, isError = false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (isError ? ' error' : '');
+  setTimeout(() => t.className = 'toast', 3200);
+}
+
+// Init
+renderTable();
+</script>
+</body>
+</html>

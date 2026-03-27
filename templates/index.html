@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Toastmasters Speech Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0d0d0d;
+  --surface: #141414;
+  --card: #1a1a1a;
+  --border: #272727;
+  --accent: #c8973a;
+  --accent-dim: rgba(200,151,58,0.12);
+  --red: #8b2131;
+  --text: #f0ece4;
+  --muted: #777;
+  --success: #4caf88;
+  --error: #e05555;
+  --radius: 12px;
+}
+
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-size:15px;min-height:100vh;}
+
+/* ── Header ── */
+header{
+  background:var(--surface);
+  border-bottom:1px solid var(--border);
+  padding:18px 40px;
+  display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;z-index:100;
+}
+.logo{display:flex;align-items:center;gap:14px;}
+.logo-badge{
+  width:42px;height:42px;background:var(--red);border-radius:10px;
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Playfair Display',serif;font-size:22px;font-weight:900;color:#fff;
+  box-shadow:0 4px 14px rgba(139,33,49,0.4);
+}
+.logo h1{font-family:'Playfair Display',serif;font-size:19px;font-weight:700;}
+.logo p{font-size:12px;color:var(--muted);margin-top:1px;}
+
+.api-bar{display:flex;align-items:center;gap:10px;}
+.api-bar label{font-size:12px;color:var(--muted);white-space:nowrap;}
+.key-wrap{position:relative;display:flex;align-items:center;}
+.key-wrap input{
+  background:var(--card);border:1px solid var(--border);color:var(--text);
+  padding:9px 38px 9px 14px;border-radius:9px;
+  font-family:monospace;font-size:13px;width:270px;outline:none;
+  transition:border-color .2s;
+}
+.key-wrap input:focus{border-color:var(--accent);}
+.key-wrap input::placeholder{color:var(--muted);}
+.key-toggle{
+  position:absolute;right:10px;background:none;border:none;
+  color:var(--muted);cursor:pointer;font-size:15px;
+  transition:color .2s;
+}
+.key-toggle:hover{color:var(--text);}
+.key-status{
+  width:8px;height:8px;border-radius:50%;background:var(--border);
+  transition:background .3s;
+}
+.key-status.active{background:var(--success);}
+
+/* ── Main ── */
+main{max-width:1280px;margin:0 auto;padding:36px 40px;}
+
+/* ── Upload zone ── */
+.upload-zone{
+  background:var(--card);
+  border:2px dashed var(--border);
+  border-radius:18px;padding:52px 40px;
+  text-align:center;cursor:pointer;
+  position:relative;overflow:hidden;
+  transition:border-color .25s,background .25s;
+}
+.upload-zone::before{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse at 50% -10%,rgba(200,151,58,.06),transparent 65%);
+  pointer-events:none;
+}
+.upload-zone.drag-over,.upload-zone:hover{
+  border-color:var(--accent);background:#1c1710;
+}
+.upload-zone input[type=file]{
+  position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;
+}
+.upload-icon{
+  width:70px;height:70px;background:var(--accent-dim);border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  margin:0 auto 20px;font-size:32px;border:1px solid rgba(200,151,58,.2);
+}
+.upload-zone h2{font-family:'Playfair Display',serif;font-size:24px;margin-bottom:8px;}
+.upload-zone p{color:var(--muted);font-size:14px;}
+.upload-zone .hint{
+  display:inline-block;margin-top:14px;font-size:12px;
+  background:rgba(255,255,255,.04);border:1px solid var(--border);
+  padding:5px 14px;border-radius:99px;color:var(--muted);
+}
+
+/* ── Queue ── */
+.section-gap{margin-top:32px;}
+.row{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+.section-title{font-family:'Playfair Display',serif;font-size:18px;}
+.btn-group{display:flex;gap:10px;align-items:center;}
+
+.queue-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(160px,1fr));
+  gap:12px;
+}
+.agenda-card{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:var(--radius);overflow:hidden;position:relative;
+}
+.agenda-card img{width:100%;height:108px;object-fit:cover;display:block;}
+.card-info{padding:10px 12px;}
+.card-name{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text);}
+.card-status{font-size:11px;margin-top:4px;display:flex;align-items:center;gap:5px;color:var(--muted);}
+.dot{width:7px;height:7px;border-radius:50%;}
+.dot.pending{background:var(--muted);}
+.dot.processing{background:var(--accent);animation:blink 1s infinite;}
+.dot.done{background:var(--success);}
+.dot.error{background:var(--error);}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.25;}}
+.card-remove{
+  position:absolute;top:6px;right:6px;
+  background:rgba(0,0,0,.65);border:none;color:#fff;
+  width:22px;height:22px;border-radius:50%;font-size:14px;
+  cursor:pointer;line-height:22px;text-align:center;
+  transition:background .15s;
+}
+.card-remove:hover{background:var(--error);}
+
+/* progress */
+.progress-row{
+  margin-top:18px;display:flex;align-items:center;gap:14px;
+  display:none;
+}
+.progress-track{flex:1;background:var(--border);border-radius:99px;height:5px;overflow:hidden;}
+.progress-fill{height:100%;background:var(--accent);border-radius:99px;width:0%;transition:width .35s ease;}
+.progress-label{font-size:13px;color:var(--muted);min-width:60px;text-align:right;}
+
+/* ── Divider ── */
+.divider{height:1px;background:var(--border);margin:36px 0;}
+
+/* ── Table ── */
+.results-header{
+  display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;
+}
+.results-title-row{display:flex;align-items:center;gap:14px;}
+.badge{
+  background:var(--accent-dim);color:var(--accent);
+  border:1px solid rgba(200,151,58,.3);
+  padding:3px 12px;border-radius:99px;font-size:12px;
+}
+.controls{display:flex;gap:10px;align-items:center;}
+.search{
+  background:var(--card);border:1px solid var(--border);color:var(--text);
+  padding:9px 16px;border-radius:9px;
+  font-family:'DM Sans',sans-serif;font-size:14px;outline:none;width:210px;
+  transition:border-color .2s;
+}
+.search:focus{border-color:var(--accent);}
+.search::placeholder{color:var(--muted);}
+
+.table-wrap{
+  border-radius:14px;border:1px solid var(--border);overflow:hidden;overflow-x:auto;
+}
+table{width:100%;border-collapse:collapse;font-size:13.5px;}
+thead tr{background:var(--surface);}
+th{
+  padding:12px 16px;text-align:left;
+  font-weight:500;color:var(--muted);
+  font-size:11px;text-transform:uppercase;letter-spacing:.6px;
+  white-space:nowrap;border-bottom:1px solid var(--border);
+}
+td{padding:11px 16px;border-bottom:1px solid var(--border);vertical-align:middle;}
+tr:last-child td{border-bottom:none;}
+tbody tr{transition:background .15s;}
+tbody tr:hover{background:rgba(255,255,255,.02);}
+.speaker-name{font-weight:500;}
+.pill{
+  display:inline-flex;align-items:center;gap:5px;
+  background:var(--accent-dim);border:1px solid rgba(200,151,58,.22);
+  color:var(--accent);padding:3px 9px;border-radius:6px;
+  font-size:11.5px;font-weight:500;margin:2px;white-space:nowrap;
+}
+.pill .pill-date{color:var(--muted);font-size:10.5px;}
+.empty{text-align:center;padding:60px;color:var(--muted);}
+.empty-icon{font-size:38px;margin-bottom:12px;}
+
+/* ── Buttons ── */
+.btn{
+  display:inline-flex;align-items:center;gap:7px;
+  padding:9px 20px;border-radius:9px;
+  font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;
+  cursor:pointer;border:none;transition:all .18s;white-space:nowrap;
+}
+.btn-primary{background:var(--accent);color:#000;}
+.btn-primary:hover{background:#daa84a;transform:translateY(-1px);}
+.btn-primary:disabled{background:#444;color:#777;cursor:not-allowed;transform:none;}
+.btn-ghost{background:transparent;border:1px solid var(--border);color:var(--text);}
+.btn-ghost:hover{border-color:var(--accent);color:var(--accent);}
+.btn-success{background:var(--success);color:#000;}
+.btn-success:hover{background:#5bc49a;}
+.btn-danger{background:transparent;border:1px solid var(--border);color:var(--muted);}
+.btn-danger:hover{border-color:var(--error);color:var(--error);}
+
+/* ── Toast ── */
+.toast{
+  position:fixed;bottom:24px;right:24px;
+  background:var(--card);border:1px solid var(--border);
+  border-left:4px solid var(--success);
+  padding:14px 20px;border-radius:10px;font-size:14px;
+  box-shadow:0 8px 32px rgba(0,0,0,.5);
+  transform:translateY(80px);opacity:0;
+  transition:all .3s;z-index:999;pointer-events:none;
+  max-width:340px;
+}
+.toast.show{transform:translateY(0);opacity:1;}
+.toast.err{border-left-color:var(--error);}
+
+/* ── Spinner ── */
+.spin{
+  display:inline-block;width:14px;height:14px;
+  border:2px solid rgba(255,255,255,.2);
+  border-top-color:#fff;border-radius:50%;
+  animation:spin .6s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* ── Responsive ── */
+@media(max-width:768px){
+  header{flex-direction:column;gap:14px;padding:16px 20px;}
+  main{padding:24px 20px;}
+  .controls{flex-wrap:wrap;}
+  .search{width:100%;}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-badge">T</div>
+    <div>
+      <h1>Speech Tracker</h1>
+      <p>Toastmasters Progress Dashboard</p>
+    </div>
+  </div>
+  <div class="api-bar">
+    <label>Groq API Key</label>
+    <div class="key-wrap">
+      <input type="password" id="groqKey" placeholder="gsk_..." oninput="onKeyInput()" />
+      <button class="key-toggle" onclick="toggleKey()" title="Show/hide key">👁</button>
+    </div>
+    <div class="key-status" id="keyStatus" title="API key status"></div>
+  </div>
+</header>
+
+<main>
+  <!-- Upload -->
+  <div class="upload-zone" id="dropzone">
+    <input type="file" id="fileInput" accept="image/*" multiple />
+    <div class="upload-icon">📋</div>
+    <h2>Drop Agenda Images Here</h2>
+    <p>Upload one or multiple JPG / PNG agenda files — speeches extracted automatically via Groq</p>
+    <span class="hint">JPG · PNG · WEBP</span>
+  </div>
+
+  <!-- Queue -->
+  <div class="section-gap" id="queueSection" style="display:none">
+    <div class="row">
+      <span class="section-title">Agenda Queue</span>
+      <div class="btn-group">
+        <button class="btn btn-ghost" onclick="clearQueue()">Clear All</button>
+        <button class="btn btn-primary" id="processBtn" onclick="processAll()">
+          ⚡ Extract Speeches
+        </button>
+      </div>
+    </div>
+    <div class="queue-grid" id="queueGrid"></div>
+    <div class="progress-row" id="progressRow">
+      <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+      <span class="progress-label" id="progressLabel">0 / 0</span>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Results -->
+  <div>
+    <div class="results-header">
+      <div class="results-title-row">
+        <span class="section-title" style="font-family:'Playfair Display',serif;font-size:22px">Speaker Progress</span>
+        <span class="badge" id="speakerBadge">0 speakers</span>
+      </div>
+      <div class="controls">
+        <input class="search" type="text" placeholder="Search speaker…" id="searchInput" oninput="renderTable()" />
+        <button class="btn btn-danger" onclick="clearData()">Clear Data</button>
+        <button class="btn btn-success" onclick="exportExcel()">⬇ Export Excel</button>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <div id="tableContainer">
+        <div class="empty">
+          <div class="empty-icon">🎤</div>
+          <p>No speeches tracked yet. Upload agenda images to get started.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── State ────────────────────────────────────────────────────────────────
+let queue = [];          // {file, previewUrl, name, status}
+let speakerData = {};    // {name: [{level, project, meetingDate}]}
+
+// Load persisted data from server on boot
+(async () => {
+  try {
+    const r = await fetch('/api/speakers');
+    if (r.ok) speakerData = await r.json();
+    renderTable();
+  } catch(e) {}
+})();
+
+// ── API Key ───────────────────────────────────────────────────────────────
+function getKey(){ return document.getElementById('groqKey').value.trim(); }
+
+function onKeyInput(){
+  const ok = getKey().startsWith('gsk_') && getKey().length > 20;
+  document.getElementById('keyStatus').className = 'key-status' + (ok ? ' active' : '');
+}
+
+function toggleKey(){
+  const el = document.getElementById('groqKey');
+  el.type = el.type === 'password' ? 'text' : 'password';
+}
+
+// ── File handling ─────────────────────────────────────────────────────────
+document.getElementById('fileInput').addEventListener('change', e => {
+  addFiles(Array.from(e.target.files));
+  e.target.value = '';
+});
+
+const dz = document.getElementById('dropzone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+dz.addEventListener('drop', e => {
+  e.preventDefault(); dz.classList.remove('drag-over');
+  addFiles(Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/')));
+});
+
+function addFiles(files){
+  files.forEach(file => {
+    queue.push({ file, previewUrl: URL.createObjectURL(file), name: file.name, status: 'pending' });
+  });
+  renderQueue();
+}
+
+// ── Queue render ──────────────────────────────────────────────────────────
+function statusLabel(s){
+  if(s==='pending') return 'Ready';
+  if(s==='processing') return 'Extracting…';
+  if(s==='done') return 'Done ✓';
+  return 'Failed';
+}
+
+function renderQueue(){
+  const sec = document.getElementById('queueSection');
+  sec.style.display = queue.length ? 'block' : 'none';
+  document.getElementById('queueGrid').innerHTML = queue.map((item, i) => `
+    <div class="agenda-card">
+      <img src="${item.previewUrl}" alt="${item.name}" />
+      <button class="card-remove" onclick="removeItem(${i})">×</button>
+      <div class="card-info">
+        <div class="card-name" title="${item.name}">${item.name}</div>
+        <div class="card-status">
+          <div class="dot ${item.status}"></div>
+          ${statusLabel(item.status)}
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+function removeItem(i){ queue.splice(i, 1); renderQueue(); }
+function clearQueue(){ queue = []; renderQueue(); }
+
+// ── Process ───────────────────────────────────────────────────────────────
+async function processAll(){
+  const key = getKey();
+  if (!key){ showToast('Enter your Groq API key first', true); return; }
+
+  const pending = queue.filter(q => q.status === 'pending');
+  if (!pending.length){ showToast('No pending agendas', true); return; }
+
+  const btn = document.getElementById('processBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> Processing…';
+
+  const progRow = document.getElementById('progressRow');
+  progRow.style.display = 'flex';
+
+  let done = 0;
+  let failed = 0;
+  for (let i = 0; i < queue.length; i++){
+    if (queue[i].status !== 'pending') continue;
+
+    queue[i].status = 'processing';
+    renderQueue();
+
+    try {
+      const fd = new FormData();
+      fd.append('file', queue[i].file);
+
+      const r = await fetch('/api/extract', {
+        method: 'POST',
+        headers: { 'X-Groq-Api-Key': key },
+        body: fd
+      });
+
+      if (!r.ok){
+        let errMsg = 'API error';
+        try { const e = await r.json(); errMsg = e.detail || errMsg; } catch(_){}
+        throw new Error(errMsg);
+      }
+
+      const data = await r.json();
+
+      // Server already saved — just refresh local state from server
+      const fresh = await fetch('/api/speakers');
+      speakerData = await fresh.json();
+
+      queue[i].status = 'done';
+
+    } catch(err){
+      queue[i].status = 'error';
+      failed++;
+      console.error('Extract failed:', err);
+      showToast(`❌ ${queue[i].name}: ${err.message}`, true);
+    }
+
+    done++;
+    updateProgress(done, pending.length);
+    renderQueue();
+    renderTable();
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '⚡ Extract Speeches';
+  const ok = done - failed;
+  if (ok > 0) showToast(`✅ ${ok} agenda${ok > 1 ? 's' : ''} processed successfully!`);
+}
+
+function updateProgress(done, total){
+  document.getElementById('progressFill').style.width = (done / total * 100) + '%';
+  document.getElementById('progressLabel').textContent = `${done} / ${total}`;
+}
+
+// ── Persist: server auto-saves on /api/extract, this is kept for safety ──
+async function persistData(){
+  // No-op: server handles saving inside /api/extract automatically
+}
+
+// ── Table ─────────────────────────────────────────────────────────────────
+function renderTable(){
+  const search = document.getElementById('searchInput').value.toLowerCase();
+  const speakers = Object.keys(speakerData).filter(n => n.toLowerCase().includes(search));
+
+  document.getElementById('speakerBadge').textContent =
+    `${Object.keys(speakerData).length} speaker${Object.keys(speakerData).length !== 1 ? 's' : ''}`;
+
+  if (!speakers.length){
+    document.getElementById('tableContainer').innerHTML = `
+      <div class="empty">
+        <div class="empty-icon">🎤</div>
+        <p>${search ? 'No speakers match your search.' : 'No speeches tracked yet. Upload agenda images to get started.'}</p>
+      </div>`;
+    return;
+  }
+
+  const maxS = Math.max(...Object.values(speakerData).map(a => a.length));
+
+  let html = `<table><thead><tr>
+    <th>#</th><th>Speaker</th><th>Speeches</th>`;
+  for (let i = 1; i <= maxS; i++) html += `<th>Speech ${i}</th>`;
+  html += `</tr></thead><tbody>`;
+
+  speakers.sort().forEach((name, idx) => {
+    const ss = [...speakerData[name]].sort((a, b) =>
+      ((a.level||0) !== (b.level||0) ? (a.level||0) - (b.level||0) : (a.project||0) - (b.project||0))
+    );
+    html += `<tr>
+      <td style="color:var(--muted)">${idx + 1}</td>
+      <td><span class="speaker-name">${name}</span></td>
+      <td style="color:var(--accent);font-weight:600">${ss.length}</td>`;
+    for (let i = 0; i < maxS; i++){
+      if (ss[i]){
+        const lvl = ss[i].level || 0;
+        const prj = ss[i].project || 0;
+        const stype = ss[i].speech_type;
+        const label = stype ? stype : (lvl && prj) ? `L${lvl} P${prj}` : '—';
+        html += `<td><span class="pill">${label}<span class="pill-date">&nbsp;·&nbsp;${ss[i].meetingDate}</span></span></td>`;
+      } else {
+        html += `<td style="color:var(--border)">—</td>`;
+      }
+    }
+    html += `</tr>`;
+  });
+
+  html += `</tbody></table>`;
+  document.getElementById('tableContainer').innerHTML = html;
+}
+
+// ── Export ────────────────────────────────────────────────────────────────
+async function exportExcel(){
+  const r = await fetch('/api/export');
+  if (!r.ok){ showToast('No data to export', true); return; }
+  const blob = await r.blob();
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'toastmasters_tracker.xlsx';
+  a.click();
+  showToast('✅ Excel exported!');
+}
+
+// ── Clear ─────────────────────────────────────────────────────────────────
+async function clearData(){
+  if (!confirm('Clear ALL tracked speaker data from the server?')) return;
+  await fetch('/api/speakers', { method: 'DELETE' });
+  speakerData = {};
+  renderTable();
+  showToast('Data cleared');
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────
+function showToast(msg, isErr = false){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (isErr ? ' err' : '');
+  setTimeout(() => t.className = 'toast', 3400);
+}
+</script>
+</body>
+</html>

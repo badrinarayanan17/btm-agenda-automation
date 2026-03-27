@@ -1,0 +1,520 @@
+{
+  "Manjaarika Kandallu": [
+    {
+      "level": 1,
+      "project": 3,
+      "speech_type": null,
+      "meetingDate": "26 Oct 2025"
+    },
+    {
+      "level": 1,
+      "project": 3,
+      "speech_type": null,
+      "meetingDate": "23 Nov 2025"
+    }
+  ],
+  "Saauj Varghese": [
+    {
+      "level": 4,
+      "project": 1,
+      "speech_type": null,
+      "meetingDate": "26 Oct 2025"
+    }
+  ],
+  "Arundhuti Basu": [
+    {
+      "level": 5,
+      "project": 3,
+      "speech_type": null,
+      "meetingDate": "26 Oct 2025"
+    }
+  ],
+  "Mani Kumar": [
+    {
+      "level": 2,
+      "project": 3,
+      "speech_type": null,
+      "meetingDate": "26 Oct 2025"
+    },
+    {
+      "level": 4,
+      "project": 2,
+      "speech_type": null,
+      "meetingDate": "30 Nov 2025"
+    }
+  ],
+  "Aarna Gupta": [
+    {
+      "level": 3,
+      "project": 3,
+      "speech_type": null,
+      "meetingDate": "26 Oct 2025"
+    },
+    {
+      "level": 4,
+      "project": 1,
+      "speech_type": null,
+      "meetingDate": "07 Dec 2025"
+    }
+  ],
+  "Abhishek Mishra": [
+    {
+      "level": 4,
+      "project": 1,
+      "speech_type": null,
+      "meetingDate": "26 Oct 2025"
+    },
+    {
+      "level": 4,
+      "project": 2,
+      "speech_type": null,
+      "meetingDate": "30 Nov 2025"
+    },
+    {
+      "level": 4,
+      "project": 0,
+      "speech_type": "BSS",
+      "meetingDate": "25 Jan 2026"
+    }
+  ],
+  "Elango K.": [
+    {
+      "level": 1,
+      "project": 3,
+      "speech_type": null,
+      "meetingDate": "23 Nov 2025"
+    },
+    {
+      "level": 1,
+      "project": 2,
+      "speech_type": null,
+      "meetingDate": "05 Oct 2025"
+    }
+  ],
+  "Usha Kumari": [
+    {
+      "level": 2,
+      "project": 2,
+      "speech_type": null,
+      "meetingDate": "23 Nov 2025"
+    },
+    {
+      "level": 2,
+      "project": 3,
+      "speech_type": null,
+      "meetingDate": "08 Feb 2026"
+    }
+  ],
+  "Akash D.": [
+    {
+      "level": 1,
+      "project": 2,
+      "speech_type": null,
+      "meetingDate": "05 Oct 2025"
+    }
+  ],
+  "Sumit Ranjan": [
+    {
+      "level": 1,
+      "project": 3,
+      "speech_type": null,
+      "meetingDate": "05 Oct 2025"
+    },
+    {
+      "level": 1,
+      "project": 2,
+      "speech_type": null,
+      "meetingDate": "21 Sep 2025"
+    },
+    {
+      "level": 1,
+      "project": 3,
+      "speech_type": null,
+      "meetingDate": "02 Nov 2025"
+    },
+    {
+      "level": 1,
+      "project": 4,
+      "speech_type": null,
+      "meetingDate": "11 Jan 2026"
+    }
+  ],
+  "Priyansh Tripathi": [
+    {
+      "level": 1,
+      "project": 4,
+      "speech_type": null,
+      "meetingDate": "14 Sep 2025"
+    },
+    {
+      "level": 1,
+      "project": 4,
+      "speech_type": null,
+      "meetingDate": "18 Jan 2026"
+    }
+  ],
+  "Wasim Fasil": [
+    {
+      "level": 1,
+      "project": 4,
+      "speech_type": null,
+      "meetingDate": "14 Sep 2025"
+    },
+    {
+      "level": 2,
+      "project": 1,
+      "speech_type": null,
+      "meetingDate": "11 Jan 2026"
+    }
+  ],
+  "Debsha Patnaik": [
+    {
+      "level": 3,
+      "project": 3,
+      "speech_type": null,
+      "meetingDate": "14 Sep 2025"
+    },
+    {
+      "level": 3,
+      "project": 3,
+      "speech_type": null,
+      "meetingDate": "02 Nov 2025"
+    },
+    {
+      "level": 4,
+      "project": 0,
+      "speech_type": "BSS",
+      "meetingDate": "01 Mar 2026"
+    }
+  ],
+  "Niveditha M.": [
+    {
+      "level": 1,
+      "project": 2,
+      "speech_type": null,
+      "meetingDate": "21 Sep 2025"
+    },
+    {
+      "level": 1,
+      "project": 3,
+      "speech_type": null,
+      "meetingDate": "18 Jan 2026"
+    }
+  ],
+  "Varun M.": [
+    {
+      "level": 1,
+      "project": 2,
+      "speech_type": null,
+      "meetingDate": "21 Sep 2025"
+    }
+  ],
+  "Manjaarica Kandallu": [
+    {
+      "level": 1,
+      "project": 2,
+      "speech_type": null,
+      "meetingDate": "21 Sep 2025"
+    }
+  ],
+  "Somil Gupta": [
+    {
+      "level": 1,
+      "project": 2,
+      "speech_type": null,
+      "meetingDate": "21 Sep 2025"
+    },
+    {
+      "level": 1,
+      "project": 3,
+      "speech_type": null,
+      "meetingDate": "07 Dec 2025"
+    },
+    {
+      "level": 1,
+      "project": 3,
+      "speech_type": null,
+      "meetingDate": "21 Dec 2025"
+    },
+    {
+      "level": 1,
+      "project": 4,
+      "speech_type": null,
+      "meetingDate": "18 Jan 2026"
+    }
+  ],
+  "Twinshu Parmar": [
+    {
+      "level": 1,
+      "project": 4,
+      "speech_type": null,
+      "meetingDate": "21 Sep 2025"
+    },
+    {
+      "level": 1,
+      "project": 5,
+      "speech_type": null,
+      "meetingDate": "16 Nov 2025"
+    }
+  ],
+  "Akshay Oommen": [
+    {
+      "level": 2,
+      "project": 2,
+      "speech_type": null,
+      "meetingDate": "21 Sep 2025"
+    },
+    {
+      "level": 2,
+      "project": 2,
+      "speech_type": null,
+      "meetingDate": "16 Nov 2025"
+    }
+  ],
+  "Vishnu Pradeep": [
+    {
+      "level": 2,
+      "project": 3,
+      "speech_type": null,
+      "meetingDate": "21 Sep 2025"
+    }
+  ],
+  "Pankaj Sankhla": [
+    {
+      "level": 1,
+      "project": 2,
+      "speech_type": null,
+      "meetingDate": "02 Nov 2025"
+    }
+  ],
+  "Sneha Suresh": [
+    {
+      "level": 1,
+      "project": 2,
+      "speech_type": null,
+      "meetingDate": "28 Sep 2025"
+    },
+    {
+      "level": 1,
+      "project": 3,
+      "speech_type": null,
+      "meetingDate": "22 Feb 2026"
+    }
+  ],
+  "Madhav Bansal": [
+    {
+      "level": 1,
+      "project": 2,
+      "speech_type": null,
+      "meetingDate": "28 Sep 2025"
+    }
+  ],
+  "Deepak Kumar": [
+    {
+      "level": 3,
+      "project": 3,
+      "speech_type": null,
+      "meetingDate": "28 Sep 2025"
+    }
+  ],
+  "Abhik Agrawal": [
+    {
+      "level": 1,
+      "project": 3,
+      "speech_type": null,
+      "meetingDate": "30 Nov 2025"
+    }
+  ],
+  "Vibhor Shrivastava": [
+    {
+      "level": 1,
+      "project": 2,
+      "speech_type": null,
+      "meetingDate": "07 Dec 2025"
+    }
+  ],
+  "Gopinath Rao": [
+    {
+      "level": 1,
+      "project": 1,
+      "speech_type": null,
+      "meetingDate": "16 Nov 2025"
+    }
+  ],
+  "Jurmin Ahmed": [
+    {
+      "level": 1,
+      "project": 1,
+      "speech_type": null,
+      "meetingDate": "16 Nov 2025"
+    },
+    {
+      "level": 1,
+      "project": 2,
+      "speech_type": null,
+      "meetingDate": "18 Jan 2026"
+    },
+    {
+      "level": 1,
+      "project": 3,
+      "speech_type": null,
+      "meetingDate": "01 Mar 2026"
+    }
+  ],
+  "Theju Raju": [
+    {
+      "level": 1,
+      "project": 1,
+      "speech_type": null,
+      "meetingDate": "16 Nov 2025"
+    }
+  ],
+  "Sangam Ramola": [
+    {
+      "level": 1,
+      "project": 2,
+      "speech_type": null,
+      "meetingDate": "16 Nov 2025"
+    },
+    {
+      "level": 1,
+      "project": 3,
+      "speech_type": null,
+      "meetingDate": "25 Jan 2026"
+    }
+  ],
+  "Varun Mangamuri": [
+    {
+      "level": 1,
+      "project": 3,
+      "speech_type": null,
+      "meetingDate": "16 Nov 2025"
+    },
+    {
+      "level": 1,
+      "project": 4,
+      "speech_type": null,
+      "meetingDate": "08 Feb 2026"
+    }
+  ],
+  "Pooja Barik": [
+    {
+      "level": 1,
+      "project": 5,
+      "speech_type": null,
+      "meetingDate": "16 Nov 2025"
+    },
+    {
+      "level": 2,
+      "project": 1,
+      "speech_type": null,
+      "meetingDate": "18 Jan 2026"
+    }
+  ],
+  "Aditya Patnaik": [
+    {
+      "level": 2,
+      "project": 3,
+      "speech_type": null,
+      "meetingDate": "21 Dec 2025"
+    }
+  ],
+  "Nevil Shah": [
+    {
+      "level": 4,
+      "project": 2,
+      "speech_type": null,
+      "meetingDate": "21 Dec 2025"
+    }
+  ],
+  "Sneha Maselkar": [
+    {
+      "level": 2,
+      "project": 2,
+      "speech_type": null,
+      "meetingDate": "11 Jan 2026"
+    },
+    {
+      "level": 2,
+      "project": 3,
+      "speech_type": null,
+      "meetingDate": "18 Jan 2026"
+    }
+  ],
+  "Ninad Deshpande": [
+    {
+      "level": 1,
+      "project": 1,
+      "speech_type": null,
+      "meetingDate": "18 Jan 2026"
+    },
+    {
+      "level": 1,
+      "project": 2,
+      "speech_type": null,
+      "meetingDate": "22 Feb 2026"
+    }
+  ],
+  "Madhur Patle": [
+    {
+      "level": 3,
+      "project": 2,
+      "speech_type": null,
+      "meetingDate": "18 Jan 2026"
+    },
+    {
+      "level": 3,
+      "project": 3,
+      "speech_type": null,
+      "meetingDate": "08 Mar 2026"
+    }
+  ],
+  "Vibha Warde": [
+    {
+      "level": 1,
+      "project": 3,
+      "speech_type": null,
+      "meetingDate": "25 Jan 2026"
+    }
+  ],
+  "Nikhil Dhoot": [
+    {
+      "level": 1,
+      "project": 1,
+      "speech_type": null,
+      "meetingDate": "08 Feb 2026"
+    }
+  ],
+  "Pranav Kumar": [
+    {
+      "level": 1,
+      "project": 2,
+      "speech_type": null,
+      "meetingDate": "22 Feb 2026"
+    }
+  ],
+  "Arundhati Basu": [
+    {
+      "level": 5,
+      "project": 0,
+      "speech_type": "DTM",
+      "meetingDate": "01 Mar 2026"
+    }
+  ],
+  "Badrinarayan S": [
+    {
+      "level": 1,
+      "project": 1,
+      "speech_type": null,
+      "meetingDate": "08 Mar 2026"
+    }
+  ],
+  "Manjaarika K": [
+    {
+      "level": 1,
+      "project": 4,
+      "speech_type": null,
+      "meetingDate": "08 Mar 2026"
+    }
+  ]
+}
