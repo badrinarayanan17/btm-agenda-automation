@@ -367,3 +367,7 @@ async def export_excel():
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": "attachment; filename=toastmasters_tracker.xlsx"},
     )
+
+from mangum import Mangum
+
+handler = Mangum(app)
