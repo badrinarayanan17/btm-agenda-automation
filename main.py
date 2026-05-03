@@ -1,9 +1,12 @@
+# v2
+
 import os
 import json
 import base64
 import httpx
 import io
 import re
+import asyncio
 from pathlib import Path
 from datetime import datetime
 from typing import Any, Dict, List
@@ -29,6 +32,11 @@ BASE_DIR = Path(__file__).parent
 DATA_FILE  = BASE_DIR / "speaker_data.json"
 GROQ_URL   = "https://api.groq.com/openai/v1/chat/completions"
 GROQ_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"
+
+# ── Rate-limit config ──────────────────────────────────────────────────────
+MAX_RETRIES        = 5          # maximum retry attempts per request
+BASE_BACKOFF       = 2.0        # seconds — doubled each retry (2, 4, 8, 16, 32)
+INTER_REQUEST_DELAY = 1.5       # seconds to wait between successful requests
 
 # ── App ────────────────────────────────────────────────────────────────────
 app = FastAPI(title="Toastmasters Speech Tracker")
@@ -80,13 +88,10 @@ def date_from_filename(filename: str) -> str:
 
 
 def normalize_name(name: str) -> str:
-    """Normalize speaker name for duplicate detection — lowercase, strip extra spaces."""
     return " ".join(name.lower().strip().split())
 
 
 def merge_speeches(existing: dict, speeches: list) -> dict:
-    """Merge a list of speech dicts into existing speaker data, no duplicates."""
-    # Build a lowercase name lookup to catch case/spacing differences
     name_map = {normalize_name(k): k for k in existing}
 
     for s in speeches:
@@ -94,20 +99,17 @@ def merge_speeches(existing: dict, speeches: list) -> dict:
         if not raw_name:
             continue
 
-        # Match to existing name (case-insensitive) or use as-is
-        norm = normalize_name(raw_name)
+        norm      = normalize_name(raw_name)
         canonical = name_map.get(norm, raw_name)
         if canonical not in existing:
             existing[canonical] = []
             name_map[norm] = canonical
 
-        level      = int(s.get("level") or 0)
-        project    = int(s.get("project") or 0)
-        stype      = (s.get("speech_type") or "").strip() or None
-        meet_date  = s.get("meetingDate", "")
+        level     = int(s.get("level") or 0)
+        project   = int(s.get("project") or 0)
+        stype     = (s.get("speech_type") or "").strip() or None
+        meet_date = s.get("meetingDate", "")
 
-        # Duplicate key: for special speeches use speech_type+date,
-        # for normal speeches use level+project+date
         def is_dup(x):
             x_stype = (x.get("speech_type") or "").strip() or None
             if stype and x_stype:
@@ -128,6 +130,71 @@ def merge_speeches(existing: dict, speeches: list) -> dict:
     return existing
 
 
+# ── Groq call with exponential-backoff retry ───────────────────────────────
+async def call_groq_with_retry(
+    api_key: str,
+    payload: dict,
+    max_retries: int = MAX_RETRIES,
+    base_backoff: float = BASE_BACKOFF,
+) -> dict:
+    """
+    POST to Groq. On HTTP 429 (rate limit) or 503 (overload) retry up to
+    `max_retries` times with exponential back-off.
+
+    Returns the parsed JSON response dict on success.
+    Raises HTTPException on non-retryable errors or exhausted retries.
+    """
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+
+    for attempt in range(max_retries + 1):
+        async with httpx.AsyncClient(timeout=90) as client:
+            resp = await client.post(GROQ_URL, json=payload, headers=headers)
+
+        # ── Success ────────────────────────────────────────────────────────
+        if resp.status_code == 200:
+            return resp.json()
+
+        # ── Rate-limited or server overloaded → retry ──────────────────────
+        if resp.status_code in (429, 503):
+            if attempt == max_retries:
+                raise HTTPException(
+                    429,
+                    f"Groq rate limit hit after {max_retries} retries. "
+                    "Please wait a minute and try again, or reduce the number "
+                    "of agendas uploaded at once."
+                )
+
+            # Honour Retry-After if provided, otherwise exponential back-off
+            retry_after = resp.headers.get("retry-after") or resp.headers.get("x-ratelimit-reset-requests")
+            if retry_after:
+                try:
+                    wait = float(retry_after)
+                except ValueError:
+                    wait = base_backoff * (2 ** attempt)
+            else:
+                wait = base_backoff * (2 ** attempt)   # 2, 4, 8, 16, 32 s
+
+            print(
+                f"[Groq] Rate limited (attempt {attempt + 1}/{max_retries}). "
+                f"Retrying in {wait:.1f}s …"
+            )
+            await asyncio.sleep(wait)
+            continue
+
+        # ── Any other error → fail immediately ────────────────────────────
+        try:
+            msg = resp.json().get("error", {}).get("message", resp.text)
+        except Exception:
+            msg = resp.text
+        raise HTTPException(resp.status_code, f"Groq error: {msg}")
+
+    # Should never reach here
+    raise HTTPException(500, "Unexpected error in Groq retry loop")
+
+
 # ── Routes ─────────────────────────────────────────────────────────────────
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
@@ -142,14 +209,17 @@ async def extract(request: Request, file: UploadFile = File(...)):
         or os.getenv("GROQ_API_KEY", "")
     )
     if not api_key:
-        raise HTTPException(400, "Groq API key missing. Pass X-Groq-Api-Key header or set GROQ_API_KEY in .env")
+        raise HTTPException(
+            400,
+            "Groq API key missing. Pass X-Groq-Api-Key header or set GROQ_API_KEY in .env"
+        )
 
     contents = await file.read()
     if not contents:
         raise HTTPException(400, "Empty file")
 
-    mime  = file.content_type or "image/jpeg"
-    b64   = base64.b64encode(contents).decode()
+    mime = file.content_type or "image/jpeg"
+    b64  = base64.b64encode(contents).decode()
 
     prompt = (
         "This is a Toastmasters meeting agenda image.\n\n"
@@ -187,28 +257,18 @@ async def extract(request: Request, file: UploadFile = File(...)):
         }],
     }
 
-    async with httpx.AsyncClient(timeout=60) as client:
-        resp = await client.post(
-            GROQ_URL,
-            json=payload,
-            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-        )
+    # ── Call Groq with automatic retry on rate limits ──────────────────────
+    result = await call_groq_with_retry(api_key, payload)
 
-    if resp.status_code != 200:
-        msg = resp.json().get("error", {}).get("message", resp.text)
-        raise HTTPException(resp.status_code, f"Groq error: {msg}")
-
-    raw   = resp.json()["choices"][0]["message"]["content"].strip()
+    raw   = result["choices"][0]["message"]["content"].strip()
     clean = raw.replace("```json", "").replace("```", "").strip()
 
     try:
         parsed = json.loads(clean)
-        # Model returns {"meetingDate": "...", "speeches": [...]}
         if isinstance(parsed, dict):
             date     = parsed.get("meetingDate", datetime.now().strftime("%d %b %Y"))
             speeches = parsed.get("speeches", [])
         else:
-            # Fallback: model returned a plain array (old format)
             speeches = parsed
             date     = datetime.now().strftime("%d %b %Y")
     except json.JSONDecodeError:
@@ -217,10 +277,13 @@ async def extract(request: Request, file: UploadFile = File(...)):
     for s in speeches:
         s["meetingDate"] = date
 
-    # ── Auto-save extracted speeches into speaker_data.json ────────────────
+    # ── Auto-save extracted speeches ───────────────────────────────────────
     existing = load_data()
     updated  = merge_speeches(existing, speeches)
     save_data(updated)
+
+    # Small courtesy delay so bulk uploads don't hammer the API
+    await asyncio.sleep(INTER_REQUEST_DELAY)
 
     return {
         "speeches": speeches,
@@ -233,13 +296,11 @@ async def extract(request: Request, file: UploadFile = File(...)):
 
 @app.get("/api/speakers")
 async def get_speakers():
-    """Return all tracked speaker data."""
     return load_data()
 
 
 @app.post("/api/speakers/merge")
 async def merge_speakers(body: MergeRequest):
-    """Manually merge a list of speeches into the tracker."""
     existing = load_data()
     updated  = merge_speeches(existing, [s.model_dump() for s in body.speeches])
     save_data(updated)
@@ -248,14 +309,12 @@ async def merge_speakers(body: MergeRequest):
 
 @app.delete("/api/speakers")
 async def delete_speakers():
-    """Clear all speaker data."""
     save_data({})
     return {"status": "cleared"}
 
 
 @app.get("/api/export")
 async def export_excel():
-    """Download the full speaker progress as a formatted Excel file."""
     data = load_data()
     if not data:
         raise HTTPException(404, "No data to export. Extract some agendas first.")
@@ -333,8 +392,8 @@ async def export_excel():
         col = 3
         for i in range(max_s):
             if i < len(ss):
-                lvl = ss[i].get('level') or 0
-                prj = ss[i].get('project') or 0
+                lvl   = ss[i].get('level') or 0
+                prj   = ss[i].get('project') or 0
                 stype = ss[i].get('speech_type')
                 if stype:
                     dcell(ri, col, stype)

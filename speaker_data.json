@@ -11,6 +11,12 @@
       "project": 3,
       "speech_type": null,
       "meetingDate": "23 Nov 2025"
+    },
+    {
+      "level": 1,
+      "project": 2,
+      "speech_type": null,
+      "meetingDate": "21 Sep 2025"
     }
   ],
   "Saauj Varghese": [
@@ -27,6 +33,12 @@
       "project": 3,
       "speech_type": null,
       "meetingDate": "26 Oct 2025"
+    },
+    {
+      "level": 5,
+      "project": 0,
+      "speech_type": "DTM",
+      "meetingDate": "01 Mar 2026"
     }
   ],
   "Mani Kumar": [
@@ -202,14 +214,6 @@
     }
   ],
   "Varun M.": [
-    {
-      "level": 1,
-      "project": 2,
-      "speech_type": null,
-      "meetingDate": "21 Sep 2025"
-    }
-  ],
-  "Manjaarica Kandallu": [
     {
       "level": 1,
       "project": 2,
@@ -491,14 +495,6 @@
       "project": 2,
       "speech_type": null,
       "meetingDate": "22 Feb 2026"
-    }
-  ],
-  "Arundhati Basu": [
-    {
-      "level": 5,
-      "project": 0,
-      "speech_type": "DTM",
-      "meetingDate": "01 Mar 2026"
     }
   ],
   "Badrinarayan S": [

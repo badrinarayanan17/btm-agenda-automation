@@ -1,3 +1,5 @@
+# v2
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -18,6 +20,7 @@
   --muted: #777;
   --success: #4caf88;
   --error: #e05555;
+  --warn: #e0a020;
   --radius: 12px;
 }
 
@@ -124,6 +127,7 @@ main{max-width:1280px;margin:0 auto;padding:36px 40px;}
 .dot{width:7px;height:7px;border-radius:50%;}
 .dot.pending{background:var(--muted);}
 .dot.processing{background:var(--accent);animation:blink 1s infinite;}
+.dot.retrying{background:var(--warn);animation:blink .7s infinite;}
 .dot.done{background:var(--success);}
 .dot.error{background:var(--error);}
 @keyframes blink{0%,100%{opacity:1;}50%{opacity:.25;}}
@@ -144,6 +148,19 @@ main{max-width:1280px;margin:0 auto;padding:36px 40px;}
 .progress-track{flex:1;background:var(--border);border-radius:99px;height:5px;overflow:hidden;}
 .progress-fill{height:100%;background:var(--accent);border-radius:99px;width:0%;transition:width .35s ease;}
 .progress-label{font-size:13px;color:var(--muted);min-width:60px;text-align:right;}
+
+/* ── Rate-limit warning banner ── */
+.rate-banner{
+  display:none;
+  margin-top:14px;
+  background:rgba(224,160,32,.1);
+  border:1px solid rgba(224,160,32,.3);
+  border-radius:10px;padding:12px 18px;
+  font-size:13px;color:var(--warn);
+  display:flex;align-items:center;gap:10px;
+}
+.rate-banner.hidden{display:none!important;}
+.rate-countdown{font-weight:600;min-width:28px;}
 
 /* ── Divider ── */
 .divider{height:1px;background:var(--border);margin:36px 0;}
@@ -224,6 +241,7 @@ tbody tr:hover{background:rgba(255,255,255,.02);}
 }
 .toast.show{transform:translateY(0);opacity:1;}
 .toast.err{border-left-color:var(--error);}
+.toast.warn{border-left-color:var(--warn);}
 
 /* ── Spinner ── */
 .spin{
@@ -285,6 +303,12 @@ tbody tr:hover{background:rgba(255,255,255,.02);}
       </div>
     </div>
     <div class="queue-grid" id="queueGrid"></div>
+
+    <!-- Rate-limit countdown banner -->
+    <div class="rate-banner hidden" id="rateBanner">
+      ⏳ Rate limit hit — retrying in <span class="rate-countdown" id="rateCountdown">—</span>s
+    </div>
+
     <div class="progress-row" id="progressRow">
       <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
       <span class="progress-label" id="progressLabel">0 / 0</span>
@@ -321,9 +345,16 @@ tbody tr:hover{background:rgba(255,255,255,.02);}
 <div class="toast" id="toast"></div>
 
 <script>
-// ── State ────────────────────────────────────────────────────────────────
-let queue = [];          // {file, previewUrl, name, status}
-let speakerData = {};    // {name: [{level, project, meetingDate}]}
+// ── Config ────────────────────────────────────────────────────────────────
+// Delay (ms) between each agenda sent to the server.
+// The server already adds 1.5 s on its side; this is the frontend guard.
+const INTER_REQUEST_MS  = 2000;   // 2 s between requests
+const MAX_CLIENT_RETRY  = 3;       // how many times the client will retry a 429 on its own
+const CLIENT_BACKOFF_MS = 8000;    // base back-off per client retry (doubles each time)
+
+// ── State ─────────────────────────────────────────────────────────────────
+let queue       = [];   // {file, previewUrl, name, status, retries}
+let speakerData = {};
 
 // Load persisted data from server on boot
 (async () => {
@@ -354,8 +385,8 @@ document.getElementById('fileInput').addEventListener('change', e => {
 });
 
 const dz = document.getElementById('dropzone');
-dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
-dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+dz.addEventListener('dragover',  e => { e.preventDefault(); dz.classList.add('drag-over'); });
+dz.addEventListener('dragleave', ()  => dz.classList.remove('drag-over'));
 dz.addEventListener('drop', e => {
   e.preventDefault(); dz.classList.remove('drag-over');
   addFiles(Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/')));
@@ -363,16 +394,23 @@ dz.addEventListener('drop', e => {
 
 function addFiles(files){
   files.forEach(file => {
-    queue.push({ file, previewUrl: URL.createObjectURL(file), name: file.name, status: 'pending' });
+    queue.push({
+      file,
+      previewUrl: URL.createObjectURL(file),
+      name: file.name,
+      status: 'pending',
+      retries: 0,
+    });
   });
   renderQueue();
 }
 
 // ── Queue render ──────────────────────────────────────────────────────────
-function statusLabel(s){
-  if(s==='pending') return 'Ready';
-  if(s==='processing') return 'Extracting…';
-  if(s==='done') return 'Done ✓';
+function statusLabel(item){
+  if (item.status === 'pending')    return 'Ready';
+  if (item.status === 'processing') return 'Extracting…';
+  if (item.status === 'retrying')   return `Retry ${item.retries}…`;
+  if (item.status === 'done')       return 'Done ✓';
   return 'Failed';
 }
 
@@ -387,22 +425,37 @@ function renderQueue(){
         <div class="card-name" title="${item.name}">${item.name}</div>
         <div class="card-status">
           <div class="dot ${item.status}"></div>
-          ${statusLabel(item.status)}
+          ${statusLabel(item)}
         </div>
       </div>
     </div>`).join('');
 }
 
 function removeItem(i){ queue.splice(i, 1); renderQueue(); }
-function clearQueue(){ queue = []; renderQueue(); }
+function clearQueue()  { queue = []; renderQueue(); }
+
+// ── Helpers ───────────────────────────────────────────────────────────────
+function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
+
+/** Show a live countdown in the rate-limit banner for `seconds` seconds. */
+async function showRateBanner(seconds){
+  const banner    = document.getElementById('rateBanner');
+  const countdown = document.getElementById('rateCountdown');
+  banner.classList.remove('hidden');
+  for (let s = seconds; s > 0; s--){
+    countdown.textContent = s;
+    await sleep(1000);
+  }
+  banner.classList.add('hidden');
+}
 
 // ── Process ───────────────────────────────────────────────────────────────
 async function processAll(){
   const key = getKey();
-  if (!key){ showToast('Enter your Groq API key first', true); return; }
+  if (!key){ showToast('Enter your Groq API key first', 'err'); return; }
 
   const pending = queue.filter(q => q.status === 'pending');
-  if (!pending.length){ showToast('No pending agendas', true); return; }
+  if (!pending.length){ showToast('No pending agendas', 'warn'); return; }
 
   const btn = document.getElementById('processBtn');
   btn.disabled = true;
@@ -411,53 +464,89 @@ async function processAll(){
   const progRow = document.getElementById('progressRow');
   progRow.style.display = 'flex';
 
-  let done = 0;
+  let done   = 0;
   let failed = 0;
+
   for (let i = 0; i < queue.length; i++){
     if (queue[i].status !== 'pending') continue;
 
-    queue[i].status = 'processing';
+    queue[i].status  = 'processing';
+    queue[i].retries = 0;
     renderQueue();
 
-    try {
-      const fd = new FormData();
-      fd.append('file', queue[i].file);
+    let success = false;
 
-      const r = await fetch('/api/extract', {
-        method: 'POST',
-        headers: { 'X-Groq-Api-Key': key },
-        body: fd
-      });
+    // ── Per-item retry loop ──────────────────────────────────────────────
+    for (let attempt = 0; attempt <= MAX_CLIENT_RETRY; attempt++){
+      try {
+        const fd = new FormData();
+        fd.append('file', queue[i].file);
 
-      if (!r.ok){
-        let errMsg = 'API error';
-        try { const e = await r.json(); errMsg = e.detail || errMsg; } catch(_){}
-        throw new Error(errMsg);
+        const r = await fetch('/api/extract', {
+          method:  'POST',
+          headers: { 'X-Groq-Api-Key': key },
+          body:    fd,
+        });
+
+        // ── Rate-limited: back off and retry ──────────────────────────────
+        if (r.status === 429){
+          if (attempt === MAX_CLIENT_RETRY){
+            throw new Error('Rate limit — maximum retries reached. Try again later.');
+          }
+          const waitSec = Math.round(CLIENT_BACKOFF_MS * Math.pow(2, attempt) / 1000);
+          queue[i].status  = 'retrying';
+          queue[i].retries = attempt + 1;
+          renderQueue();
+          showToast(`⏳ Rate limited. Waiting ${waitSec}s before retry…`, 'warn');
+          await showRateBanner(waitSec);   // shows live countdown
+          queue[i].status = 'processing';
+          renderQueue();
+          continue;   // retry
+        }
+
+        if (!r.ok){
+          let errMsg = 'API error';
+          try { const e = await r.json(); errMsg = e.detail || errMsg; } catch(_){}
+          throw new Error(errMsg);
+        }
+
+        // ── Success ───────────────────────────────────────────────────────
+        await r.json();   // consume body
+
+        // Refresh local state from server
+        const fresh = await fetch('/api/speakers');
+        speakerData = await fresh.json();
+
+        queue[i].status = 'done';
+        success = true;
+        break;
+
+      } catch(err){
+        if (attempt === MAX_CLIENT_RETRY || !err.message.includes('Rate limit')){
+          queue[i].status = 'error';
+          failed++;
+          showToast(`❌ ${queue[i].name}: ${err.message}`, 'err');
+          break;
+        }
       }
-
-      const data = await r.json();
-
-      // Server already saved — just refresh local state from server
-      const fresh = await fetch('/api/speakers');
-      speakerData = await fresh.json();
-
-      queue[i].status = 'done';
-
-    } catch(err){
-      queue[i].status = 'error';
-      failed++;
-      console.error('Extract failed:', err);
-      showToast(`❌ ${queue[i].name}: ${err.message}`, true);
     }
 
     done++;
     updateProgress(done, pending.length);
     renderQueue();
     renderTable();
+
+    // ── Inter-request delay (only if more items to process) ───────────────
+    const remaining = queue.slice(i + 1).filter(q => q.status === 'pending');
+    if (remaining.length > 0 && success){
+      await sleep(INTER_REQUEST_MS);
+    }
   }
 
   btn.disabled = false;
   btn.innerHTML = '⚡ Extract Speeches';
+  document.getElementById('rateBanner').classList.add('hidden');
+
   const ok = done - failed;
   if (ok > 0) showToast(`✅ ${ok} agenda${ok > 1 ? 's' : ''} processed successfully!`);
 }
@@ -467,14 +556,9 @@ function updateProgress(done, total){
   document.getElementById('progressLabel').textContent = `${done} / ${total}`;
 }
 
-// ── Persist: server auto-saves on /api/extract, this is kept for safety ──
-async function persistData(){
-  // No-op: server handles saving inside /api/extract automatically
-}
-
 // ── Table ─────────────────────────────────────────────────────────────────
 function renderTable(){
-  const search = document.getElementById('searchInput').value.toLowerCase();
+  const search   = document.getElementById('searchInput').value.toLowerCase();
   const speakers = Object.keys(speakerData).filter(n => n.toLowerCase().includes(search));
 
   document.getElementById('speakerBadge').textContent =
@@ -506,8 +590,8 @@ function renderTable(){
       <td style="color:var(--accent);font-weight:600">${ss.length}</td>`;
     for (let i = 0; i < maxS; i++){
       if (ss[i]){
-        const lvl = ss[i].level || 0;
-        const prj = ss[i].project || 0;
+        const lvl   = ss[i].level   || 0;
+        const prj   = ss[i].project || 0;
         const stype = ss[i].speech_type;
         const label = stype ? stype : (lvl && prj) ? `L${lvl} P${prj}` : '—';
         html += `<td><span class="pill">${label}<span class="pill-date">&nbsp;·&nbsp;${ss[i].meetingDate}</span></span></td>`;
@@ -525,7 +609,7 @@ function renderTable(){
 // ── Export ────────────────────────────────────────────────────────────────
 async function exportExcel(){
   const r = await fetch('/api/export');
-  if (!r.ok){ showToast('No data to export', true); return; }
+  if (!r.ok){ showToast('No data to export', 'err'); return; }
   const blob = await r.blob();
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -544,11 +628,11 @@ async function clearData(){
 }
 
 // ── Toast ─────────────────────────────────────────────────────────────────
-function showToast(msg, isErr = false){
+function showToast(msg, type = ''){
   const t = document.getElementById('toast');
   t.textContent = msg;
-  t.className = 'toast show' + (isErr ? ' err' : '');
-  setTimeout(() => t.className = 'toast', 3400);
+  t.className   = 'toast show' + (type ? ` ${type}` : '');
+  setTimeout(() => t.className = 'toast', 3800);
 }
 </script>
 </body>

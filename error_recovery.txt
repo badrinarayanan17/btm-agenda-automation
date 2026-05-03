@@ -1,0 +1,26 @@
+Dated - 3rd May 26
+
+Root Cause 
+
+The root cause is that Groq's free/standard tier has a rate limit on requests-per-minute. 
+When you upload say 10 agendas and fire them all off instantly, you blow past that limit fast. 
+The fix isn't clever — it's just not sending requests faster than Groq allows, and gracefully waiting when you do overshoot.
+
+Now there are two layers to resolve the rate limit error:
+
+Layer 1 — Prevention (stop hitting the limit)
+
+Frontend waits 2s between each agenda before even sending the next request
+Server adds another 1.5s asyncio.sleep after each successful Groq call
+Together they space out requests so you rarely hit the limit in the first place
+
+Layer 2 — Recovery (handle it when you do hit it)
+
+Server retries up to 5× with exponential backoff (2→4→8→16→32s)
+If the server exhausts its retries, the frontend catches the 429 and retries 3 more times (8→16→24s)
+A live countdown banner shows the user exactly what's happening during waits
+
+If you keep hitting limits even with these delays, you have two more levers:
+
+Increase INTER_REQUEST_MS in the frontend (e.g. 4000 for 4s gaps)
+Increase BASE_BACKOFF in main.py (e.g. 4.0 to start at 4s backoff)
